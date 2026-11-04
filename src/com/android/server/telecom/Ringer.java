@@ -48,6 +48,7 @@ import android.telecom.TelecomManager;
 import android.util.Pair;
 import android.view.accessibility.AccessibilityManager;
 
+import com.android.internal.rr.RemixHaptics;
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.server.telecom.LogUtils.EventTimer;
 import com.android.server.telecom.flags.FeatureFlags;
@@ -564,13 +565,17 @@ public class Ringer {
                         // vibrator wasn't reserved. This still triggers the mBlockOnRingingFuture.
                         return;
                     }
-                    final VibrationEffect vibrationEffect = mDefaultVibrationEffect;
+                    // Haptic Remix: the user's pattern for this number, or for every call.
+                    final VibrationEffect remix = RemixHaptics.forCall(mContext,
+                            foregroundCall != null ? foregroundCall.getHandle() : null);
+                    final VibrationEffect vibrationEffect =
+                            remix != null ? remix : mDefaultVibrationEffect;
 
-                    boolean isUsingAudioCoupledHaptics =
-                            !finalHapticChannelsMuted && ringtone != null
+                    boolean isUsingAudioCoupledHaptics = remix == null
+                            && !finalHapticChannelsMuted && ringtone != null
                                     && ringtone.hasHapticChannels();
                     vibrateIfNeeded(isUsingAudioCoupledHaptics, foregroundCall, vibrationEffect,
-                            ringtoneUri);
+                            remix != null ? null : ringtoneUri);
                 } finally {
                     // This is used to signal to tests that the async play() call has completed.
                     if (mBlockOnRingingFuture != null) {
