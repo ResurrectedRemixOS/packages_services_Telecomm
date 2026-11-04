@@ -48,7 +48,6 @@ import android.telecom.TelecomManager;
 import android.util.Pair;
 import android.view.accessibility.AccessibilityManager;
 
-import com.android.internal.rr.RemixHaptics;
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.server.telecom.LogUtils.EventTimer;
 import com.android.server.telecom.flags.FeatureFlags;
@@ -566,7 +565,7 @@ public class Ringer {
                         return;
                     }
                     // Haptic Remix: the user's pattern for this number, or for every call.
-                    final VibrationEffect remix = RemixHaptics.forCall(mContext,
+                    final VibrationEffect remix = remixForCall(mContext,
                             foregroundCall != null ? foregroundCall.getHandle() : null);
                     final VibrationEffect vibrationEffect =
                             remix != null ? remix : mDefaultVibrationEffect;
@@ -650,6 +649,20 @@ public class Ringer {
             return true;
         }
    }
+
+    /**
+     * The user's Haptic Remix pattern for this call, or null for the default. The class lives
+     * in the framework, which the Telecom module cannot compile against, so it is found by name.
+     */
+    private static VibrationEffect remixForCall(Context context, Uri handle) {
+        try {
+            return (VibrationEffect) Class.forName("com.android.internal.rr.RemixHaptics")
+                    .getMethod("forCall", Context.class, Uri.class)
+                    .invoke(null, context, handle);
+        } catch (ReflectiveOperationException | RuntimeException e) {
+            return null;
+        }
+    }
 
     private void vibrateIfNeeded(boolean isUsingAudioCoupledHaptics, Call foregroundCall,
             VibrationEffect effect, Uri ringtoneUri) {
